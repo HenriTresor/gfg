@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String?
+  lastName  String?
+  isActive  Boolean  @default(true)
+  role      UserRole @default(FARM_SUPERVISOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sessions  Session[]
+  casualWorkEntries  CasualWorkEntry[]
+  approvedCasualWorkEntries  CasualWorkEntry[] @relation("ApprovedBy")
+  dailyCasualRequests  DailyCasualRequest[]
+  approvedDailyCasualRequests  DailyCasualRequest[] @relation("RequestApprovedBy")
+  notifications Notification[]
+
+  @@map("users")
+}
+
+// Casual Worker model
+model Casual {
+  id          String   @id @default(cuid())
+  name        String
+  nationalId  String   @unique
+  phoneNumber String
+  farmName    String   @default("Kamabuye")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workEntries CasualWorkEntry[]
+
+  @@map("casuals")
+}
+
+// Daily Casual Request model (Request for casual workers)
+model DailyCasualRequest {
+  id                  String                  @id @default(cuid())
+  casualsRequired     Int                     // Number of casuals needed
+  crop                String
+  cropStage           String
+  date                DateTime
+  week                String                  // e.g., "week 7-13"
+  activity            String
+  farmName            String
+  adjustment          Float                   @default(0)
+  units               Int                     @default(1)
+  costPerUnit         Float
+  total               Float                   // Calculated: casualsRequired * costPerUnit
+  status              DailyRequestStatus      @default(PENDING)
+  rejectionReason     String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  // Relations
+  supervisorId        String
+  supervisor          User                    @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  adminId             String?
+  admin               User?                   @relation("RequestApprovedBy", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@map("daily_casual_requests")
+}
+
+// Casual Work Entry model (Actual work done by casuals)
+model CasualWorkEntry {
+  id                    String               @id @default(cuid())
+  activityDone          String
+  unit                  Int                  // Number of days/imibyizi
+  costPerUnit           Float
+  date                  DateTime
+  farmName              String
+  period                String               // e.g., "week 31-6"
+  month                 String
+  crop                  String
+  cropStage             String?
+  adjustment            Float                @default(0) // Cut amount due to charges like food
+  amount                Float                // Calculated: (unit * costPerUnit) - adjustment
+  amountInclMomoCharges Float                // Calculated: amount + momo charges
+  signature             String?              // Digital signature or confirmation
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  // Relations
+  casualId     String
+  casual       Casual @relation(fields: [casualId], references: [id], onDelete: Cascade)
+  supervisorId String
+  supervisor   User   @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  adminId      String?
+  admin        User?  @relation("ApprovedBy", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@map("casual_work_entries")
+}
+
+// Session model for JWT token management
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("sessions")
+}
+
+// Notification model
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?  // Optional link to related resource
+  metadata  String?  // JSON string for additional data
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// Enums
+enum UserRole {
+  FARM_SUPERVISOR
+  SYSTEM_ADMIN
+}
+
+enum DailyRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  REQUEST_CREATED
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  WORK_ENTRY_CREATED
+  SYSTEM_NOTIFICATION
+}

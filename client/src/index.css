@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+@layer components {
+  /* Primary Green Buttons */
+  .btn-primary {
+    background-color: #16a34a;
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-primary:hover {
+    background-color: #15803d;
+  }
+  
+  /* Secondary Yellow Buttons */
+  .btn-secondary {
+    background-color: #eab308;
+    color: #000000;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #ca8a04;
+    color: white;
+  }
+  
+  /* Accent Blue Buttons */
+  .btn-accent {
+    background-color: #2563eb;
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-accent:hover {
+    background-color: #1d4ed8;
+  }
+  
+  /* Input Fields */
+  .input-field {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    outline: none;
+    background-color: white;
+    color: #1f2937;
+  }
+  
+  .input-field:focus {
+    border-color: transparent;
+    box-shadow: 0 0 0 2px #16a34a;
+  }
+  
+  .input-field::placeholder {
+    color: #6b7280;
+  }
+  
+  /* Cards */
+  .card {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    padding: 1.5rem;
+  }
+  
+  /* Text Colors */
+  .text-primary {
+    color: #16a34a;
+  }
+  
+  .text-secondary {
+    color: #eab308;
+  }
+  
+  .text-accent {
+    color: #2563eb;
+  }
+  
+  .text-dark {
+    color: #1f2937;
+  }
+  
+  .text-light {
+    color: #6b7280;
+  }
+  
+  /* Background Colors */
+  .bg-primary {
+    background-color: #16a34a;
+  }
+  
+  .bg-secondary {
+    background-color: #eab308;
+  }
+  
+  .bg-accent {
+    background-color: #2563eb;
+  }
+  
+  .bg-primary-light {
+    background-color: #dcfce7;
+  }
+  
+  .bg-secondary-light {
+    background-color: #fef3c7;
+  }
+  
+  .bg-accent-light {
+    background-color: #dbeafe;
+  }
+}
