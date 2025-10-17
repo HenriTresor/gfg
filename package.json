@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/node-cache": "^4.1.3"
+  }
+}

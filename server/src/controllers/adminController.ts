@@ -4,6 +4,8 @@ import { ResponseHelper } from '../utils/response';
 import { PaginationHelper } from '../utils/pagination';
 import logger from '../config/logger';
 import { hashPassword } from '../utils/crypto';
+import { cacheService } from '../services/cacheService';
+import { CACHE_KEYS, CACHE_TTL } from '../services/cacheService';
 import { ApproveRequestRequest, RejectRequestRequest, PaymentReportRequest, PaymentReportResponse, PaymentReportEntry } from '../types';
 
 export class AdminController {
@@ -293,44 +295,51 @@ export class AdminController {
 
     async getStatistics(req: Request, res: Response): Promise<void> {
         try {
-            const [
-                totalCasuals,
-                activeCasuals,
-                totalWorkEntries,
-                totalSupervisors,
-                totalAmount,
-                totalAmountInclMomoCharges,
-            ] = await Promise.all([
-                prisma.casual.count(),
-                prisma.casual.count({ where: { isActive: true } }),
-                prisma.casualWorkEntry.count(),
-                prisma.user.count({ where: { role: 'FARM_SUPERVISOR' as any } }),
-                prisma.casualWorkEntry.aggregate({
-                    _sum: { amount: true },
-                }),
-                prisma.casualWorkEntry.aggregate({
-                    _sum: { amountInclMomoCharges: true },
-                }),
-            ]);
+            // Use cache-aside pattern
+            const statistics = await cacheService.getOrSet(
+                CACHE_KEYS.STATISTICS,
+                async () => {
+                    const [
+                        totalCasuals,
+                        activeCasuals,
+                        totalWorkEntries,
+                        totalSupervisors,
+                        totalAmount,
+                        totalAmountInclMomoCharges,
+                    ] = await Promise.all([
+                        prisma.casual.count(),
+                        prisma.casual.count({ where: { isActive: true } }),
+                        prisma.casualWorkEntry.count(),
+                        prisma.user.count({ where: { role: 'FARM_SUPERVISOR' as any } }),
+                        prisma.casualWorkEntry.aggregate({
+                            _sum: { amount: true },
+                        }),
+                        prisma.casualWorkEntry.aggregate({
+                            _sum: { amountInclMomoCharges: true },
+                        }),
+                    ]);
 
-            const statistics = {
-                casuals: {
-                    total: totalCasuals,
-                    active: activeCasuals,
-                    inactive: totalCasuals - activeCasuals,
+                    return {
+                        casuals: {
+                            total: totalCasuals,
+                            active: activeCasuals,
+                            inactive: totalCasuals - activeCasuals,
+                        },
+                        workEntries: {
+                            total: totalWorkEntries,
+                        },
+                        supervisors: {
+                            total: totalSupervisors,
+                        },
+                        financial: {
+                            totalAmount: totalAmount._sum?.amount || 0,
+                            totalAmountInclMomoCharges: totalAmountInclMomoCharges._sum?.amountInclMomoCharges || 0,
+                        },
+                        generatedAt: new Date(),
+                    };
                 },
-                workEntries: {
-                    total: totalWorkEntries,
-                },
-                supervisors: {
-                    total: totalSupervisors,
-                },
-                financial: {
-                    totalAmount: totalAmount._sum?.amount || 0,
-                    totalAmountInclMomoCharges: totalAmountInclMomoCharges._sum?.amountInclMomoCharges || 0,
-                },
-                generatedAt: new Date(),
-            };
+                CACHE_TTL.STATISTICS
+            );
 
             ResponseHelper.success(res, statistics, 'Statistics retrieved successfully');
         } catch (error) {
@@ -376,6 +385,10 @@ export class AdminController {
                     createdAt: true,
                 },
             });
+
+            // Invalidate cache
+            cacheService.invalidatePattern('statistics');
+            cacheService.invalidatePattern('supervisors');
 
             logger.info(`Supervisor created by admin ${req.user!.email}: ${supervisor.email}`);
             ResponseHelper.created(res, supervisor, 'Supervisor created successfully');

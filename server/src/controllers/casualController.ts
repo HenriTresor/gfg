@@ -4,6 +4,8 @@ import { ResponseHelper } from '../utils/response';
 import { PaginationHelper } from '../utils/pagination';
 import logger from '../config/logger';
 import { CreateCasualRequest, UpdateCasualRequest, SearchParams } from '../types';
+import { cacheService } from '../services/cacheService';
+import { CACHE_KEYS, CACHE_TTL } from '../services/cacheService';
 
 export class CasualController {
     async getAllCasuals(req: Request, res: Response): Promise<void> {
@@ -11,27 +13,37 @@ export class CasualController {
             const pagination = PaginationHelper.parsePaginationParams(req.query);
             const search = req.query.search as string;
 
-            const where: any = {};
+            // Create cache key based on pagination and search
+            const cacheKey = CACHE_KEYS.CASUAL_WORKERS(pagination.page, pagination.limit) + (search ? `:search:${search}` : '');
 
-            if (search) {
-                where.OR = [
-                    { name: { contains: search, mode: 'insensitive' as any } },
-                    { nationalId: { contains: search } },
-                    { phoneNumber: { contains: search } },
-                ];
-            }
+            // Use cache-aside pattern
+            const result = await cacheService.getOrSet(
+                cacheKey,
+                async () => {
+                    const where: any = {};
 
-            const [casuals, total] = await Promise.all([
-                prisma.casual.findMany({
-                    where,
-                    skip: pagination.skip,
-                    take: pagination.limit,
-                    orderBy: { createdAt: 'desc' },
-                }),
-                prisma.casual.count({ where }),
-            ]);
+                    if (search) {
+                        where.OR = [
+                            { name: { contains: search, mode: 'insensitive' as any } },
+                            { nationalId: { contains: search } },
+                            { phoneNumber: { contains: search } },
+                        ];
+                    }
 
-            const result = PaginationHelper.createPaginationResult(casuals, total, pagination);
+                    const [casuals, total] = await Promise.all([
+                        prisma.casual.findMany({
+                            where,
+                            skip: pagination.skip,
+                            take: pagination.limit,
+                            orderBy: { createdAt: 'desc' },
+                        }),
+                        prisma.casual.count({ where }),
+                    ]);
+
+                    return PaginationHelper.createPaginationResult(casuals, total, pagination);
+                },
+                CACHE_TTL.CASUAL_WORKERS
+            );
 
             ResponseHelper.success(res, result, 'Casuals retrieved successfully');
         } catch (error) {
@@ -141,6 +153,9 @@ export class CasualController {
                 data: casualData,
             });
 
+            // Invalidate cache
+            cacheService.invalidateCasual();
+
             logger.info(`Casual created: ${casual.name} (${casual.nationalId})`);
             ResponseHelper.created(res, casual, 'Casual created successfully');
         } catch (error) {
@@ -193,6 +208,9 @@ export class CasualController {
                 data: updateData,
             });
 
+            // Invalidate cache
+            cacheService.invalidateCasual();
+
             logger.info(`Casual updated: ${casual.name} (${casual.nationalId})`);
             ResponseHelper.success(res, casual, 'Casual updated successfully');
         } catch (error) {
@@ -220,6 +238,9 @@ export class CasualController {
                 where: { id },
                 data: { isActive: false },
             });
+
+            // Invalidate cache
+            cacheService.invalidateCasual();
 
             logger.info(`Casual deactivated: ${casual.name} (${casual.nationalId})`);
             ResponseHelper.success(res, casual, 'Casual deactivated successfully');
