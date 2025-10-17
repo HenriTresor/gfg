@@ -243,4 +243,18 @@ export const dailyCasualRequestAPI = {
         api.patch(`/daily-casual-requests/${id}/reject`, data),
 };
 
+// Notification API
+export const notificationAPI = {
+    getMyNotifications: (params?: { limit?: number }) =>
+        api.get('/notifications', { params }),
+
+    getUnreadCount: () => api.get('/notifications/unread-count'),
+
+    markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+
+    markAllAsRead: () => api.patch('/notifications/read-all'),
+
+    delete: (id: string) => api.delete(`/notifications/${id}`),
+};
+
 export default api;

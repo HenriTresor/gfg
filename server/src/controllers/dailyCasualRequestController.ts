@@ -55,7 +55,7 @@ export class DailyCasualRequestController {
 
             // Send email to supervisor
             try {
-                const supervisorName = request.supervisor.firstName 
+                const supervisorName = request.supervisor.firstName
                     ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
                     : request.supervisor.email;
 
@@ -93,7 +93,7 @@ export class DailyCasualRequestController {
                     select: { email: true, firstName: true, lastName: true },
                 });
 
-                const supervisorName = request.supervisor.firstName 
+                const supervisorName = request.supervisor.firstName
                     ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
                     : request.supervisor.email;
 
@@ -120,7 +120,7 @@ export class DailyCasualRequestController {
                     select: { id: true },
                 });
 
-                const supervisorName = request.supervisor.firstName 
+                const supervisorName = request.supervisor.firstName
                     ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
                     : request.supervisor.email;
 
@@ -358,7 +358,7 @@ export class DailyCasualRequestController {
 
             // Send email to supervisor
             try {
-                const supervisorName = request.supervisor.firstName 
+                const supervisorName = request.supervisor.firstName
                     ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
                     : request.supervisor.email;
 
@@ -461,7 +461,7 @@ export class DailyCasualRequestController {
 
             // Send email to supervisor
             try {
-                const supervisorName = request.supervisor.firstName 
+                const supervisorName = request.supervisor.firstName
                     ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
                     : request.supervisor.email;
 

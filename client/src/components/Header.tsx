@@ -1,21 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, Bell } from 'lucide-react';
+import { User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
+import NotificationBell from './NotificationBell';
 
 const Header: React.FC = () => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
-    const notificationRef = useRef<HTMLDivElement>(null);
     const { user, logout } = useAuth();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
                 setIsProfileOpen(false);
-            }
-            if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-                setIsNotificationsOpen(false);
             }
         };
 
@@ -43,29 +39,7 @@ const Header: React.FC = () => {
                 {/* Right side - Notifications and Profile */}
                 <div className="flex items-center space-x-4">
                     {/* Notifications */}
-                    <div className="relative" ref={notificationRef}>
-                        <button
-                            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative"
-                        >
-                            <Bell className="w-5 h-5" />
-                            {/* Notification badge */}
-                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs"></span>
-                        </button>
-
-                        {isNotificationsOpen && (
-                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                                <div className="p-4 border-b border-gray-200">
-                                    <h3 className="font-semibold text-gray-800">Notifications</h3>
-                                </div>
-                                <div className="max-h-64 overflow-y-auto">
-                                    <div className="p-4 border-b border-gray-100">
-                                        <p className="text-sm text-gray-600">No new notifications</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <NotificationBell />
 
                     {/* Profile Dropdown */}
                     <div className="relative" ref={profileRef}>
