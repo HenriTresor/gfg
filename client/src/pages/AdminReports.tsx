@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Download, FileText, Calendar, Filter, DollarSign } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Download, FileText, Calendar, Filter, DollarSign, Trash2 } from 'lucide-react';
 import { adminAPI } from '../lib/api';
 import * as XLSX from 'xlsx';
 
@@ -40,10 +41,12 @@ interface PaymentReport {
 }
 
 const AdminReports: React.FC = () => {
+    const { reportId } = useParams<{ reportId?: string }>();
+    const navigate = useNavigate();
+
     const [report, setReport] = useState<PaymentReport | null>(null);
     const [loading, setLoading] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
-    const [showAllReports, setShowAllReports] = useState(false);
     const [allReports, setAllReports] = useState<any[]>([]);
     const [filters, setFilters] = useState({
         startDate: '',
@@ -52,8 +55,14 @@ const AdminReports: React.FC = () => {
     });
 
     useEffect(() => {
-        loadLatestReport();
-    }, []);
+        if (!reportId) {
+            loadLatestReport();
+        } else if (reportId === 'all') {
+            loadAllReports();
+        } else {
+            loadReportById(reportId);
+        }
+    }, [reportId]);
 
     const loadLatestReport = async () => {
         try {
@@ -64,6 +73,18 @@ const AdminReports: React.FC = () => {
             }
         } catch (error) {
             console.error('Error loading latest report:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadReportById = async (id: string) => {
+        try {
+            setLoading(true);
+            const response = await adminAPI.getReportById(id);
+            setReport(response.data.data);
+        } catch (error) {
+            console.error('Error loading report:', error);
         } finally {
             setLoading(false);
         }
@@ -81,6 +102,26 @@ const AdminReports: React.FC = () => {
         }
     };
 
+    const deleteReport = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await adminAPI.deleteReport(id);
+            // If we're viewing the deleted report, go back to latest
+            if (reportId === id) {
+                navigate('/admin/reports');
+            } else {
+                // Reload the all reports list
+                loadAllReports();
+            }
+        } catch (error) {
+            console.error('Error deleting report:', error);
+            alert('Failed to delete report');
+        }
+    };
+
     const generateReport = async (customFilters?: any) => {
         try {
             setLoading(true);
@@ -88,7 +129,7 @@ const AdminReports: React.FC = () => {
 
             const response = await adminAPI.generateCustomPaymentReport(reportFilters);
             setReport(response.data.data);
-            setShowAllReports(false); // Switch back to latest report view
+            navigate('/admin/reports'); // Navigate to latest report view
         } catch (error) {
             console.error('Error generating report:', error);
         } finally {
@@ -97,13 +138,11 @@ const AdminReports: React.FC = () => {
     };
 
     const handleViewAllReports = () => {
-        setShowAllReports(true);
-        loadAllReports();
+        navigate('/admin/reports/all');
     };
 
     const handleViewLatestReport = () => {
-        setShowAllReports(false);
-        loadLatestReport();
+        navigate('/admin/reports');
     };
 
     const handleFilterSubmit = (e: React.FormEvent) => {
@@ -198,15 +237,13 @@ const AdminReports: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex space-x-3">
-                    {report && (
-                        <button
-                            onClick={showAllReports ? handleViewLatestReport : handleViewAllReports}
-                            className="btn-secondary flex items-center"
-                        >
-                            <FileText className="w-4 h-4 mr-2" />
-                            {showAllReports ? 'View Latest Report' : 'View All Reports'}
-                        </button>
-                    )}
+                    <button
+                        onClick={reportId === 'all' ? handleViewLatestReport : handleViewAllReports}
+                        className="btn-secondary flex items-center"
+                    >
+                        <FileText className="w-4 h-4 mr-2" />
+                        {reportId === 'all' ? 'View Latest Report' : 'View All Reports'}
+                    </button>
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className="btn-secondary flex items-center"
@@ -214,7 +251,7 @@ const AdminReports: React.FC = () => {
                         <Filter className="w-4 h-4 mr-2" />
                         Filters
                     </button>
-                    {report && !showAllReports && (
+                    {report && reportId !== 'all' && (
                         <button
                             onClick={() => exportToExcel()}
                             className="btn-primary flex items-center"
@@ -283,14 +320,14 @@ const AdminReports: React.FC = () => {
             )}
 
             {/* Latest Report Banner */}
-            {report && !showAllReports && (
+            {report && reportId !== 'all' && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="flex items-center mb-2">
                                 <Calendar className="w-5 h-5 text-blue-600 mr-2" />
                                 <h3 className="text-lg font-semibold text-blue-900">
-                                    Latest Report Generated
+                                    {reportId ? 'Report Details' : 'Latest Report Generated'}
                                 </h3>
                             </div>
                             <p className="text-sm text-blue-700">
@@ -333,7 +370,7 @@ const AdminReports: React.FC = () => {
             )}
 
             {/* Summary Cards */}
-            {report && !showAllReports && (
+            {report && reportId !== 'all' && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
 
@@ -367,7 +404,7 @@ const AdminReports: React.FC = () => {
             )}
 
             {/* Report Table */}
-            {!showAllReports && (
+            {reportId !== 'all' && (
                 <div className="card">
                     {loading ? (
                         <div className="flex items-center justify-center h-32">
@@ -459,117 +496,134 @@ const AdminReports: React.FC = () => {
             )}
 
             {/* All Reports Table */}
-            {showAllReports && (
+            {reportId === 'all' && (
                 <div className="card">
                     <div className="px-6 py-4 border-b border-gray-200">
                         <h3 className="text-lg font-semibold text-gray-900">All Generated Reports</h3>
                         <p className="text-sm text-gray-600">View all payment reports generated in the system</p>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Generated Date
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Generated By
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Date Range
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Total Casuals
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Total Amount
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {allReports.length === 0 ? (
+                    {loading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center">
-                                            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                            <p className="text-gray-500">No reports found</p>
-                                        </td>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Generated Date
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Generated By
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Date Range
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Total Casuals
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Total Amount
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
                                     </tr>
-                                ) : (
-                                    allReports.map((reportItem) => (
-                                        <tr key={reportItem.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-900">
-                                                            {new Date(reportItem.generatedAt).toLocaleDateString()}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500">
-                                                            {new Date(reportItem.generatedAt).toLocaleTimeString()}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <p className="text-sm text-gray-900">
-                                                    {reportItem.generatedBy.firstName
-                                                        ? `${reportItem.generatedBy.firstName} ${reportItem.generatedBy.lastName || ''}`
-                                                        : reportItem.generatedBy.email}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    {reportItem.generatedBy.email}
-                                                </p>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">
-                                                    {reportItem.filters.startDate && (
-                                                        <p>From: {new Date(reportItem.filters.startDate).toLocaleDateString()}</p>
-                                                    )}
-                                                    {reportItem.filters.endDate && (
-                                                        <p>To: {new Date(reportItem.filters.endDate).toLocaleDateString()}</p>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {reportItem.summary.totalCasuals}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <div className="flex items-center">
-                                                    <DollarSign className="w-4 h-4 mr-1" />
-                                                    {formatCurrency(reportItem.summary.totalAmountInclMomoCharges)}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div className="flex items-center space-x-3">
-                                                    <button
-                                                        onClick={() => {
-                                                            setShowAllReports(false);
-                                                            loadLatestReport();
-                                                        }}
-                                                        className="text-primary-600 hover:text-primary-900"
-                                                    >
-                                                        View Details
-                                                    </button>
-                                                    <button
-                                                        onClick={() => exportReportById(reportItem.id)}
-                                                        className="text-green-600 hover:text-green-900 flex items-center"
-                                                    >
-                                                        <Download className="w-4 h-4 mr-1" />
-                                                        Export
-                                                    </button>
-                                                </div>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {allReports.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-12 text-center">
+                                                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                                <p className="text-gray-500">No reports found</p>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                    ) : (
+                                        allReports.map((reportItem) => (
+                                            <tr key={reportItem.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-900">
+                                                                {new Date(reportItem.generatedAt).toLocaleDateString()}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                {new Date(reportItem.generatedAt).toLocaleTimeString()}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <p className="text-sm text-gray-900">
+                                                        {reportItem.generatedBy.firstName
+                                                            ? `${reportItem.generatedBy.firstName} ${reportItem.generatedBy.lastName || ''}`
+                                                            : reportItem.generatedBy.email}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {reportItem.generatedBy.email}
+                                                    </p>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm text-gray-900">
+                                                        {reportItem.filters.startDate && (
+                                                            <p>From: {new Date(reportItem.filters.startDate).toLocaleDateString()}</p>
+                                                        )}
+                                                        {reportItem.filters.endDate && (
+                                                            <p>To: {new Date(reportItem.filters.endDate).toLocaleDateString()}</p>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {reportItem.summary.totalCasuals}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <div className="flex items-center">
+                                                        <DollarSign className="w-4 h-4 mr-1" />
+                                                        {formatCurrency(reportItem.summary.totalAmountInclMomoCharges)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div className="flex items-center space-x-3">
+                                                        <button
+                                                            onClick={() => navigate(`/admin/reports/${reportItem.id}`)}
+                                                            className="text-primary-600 hover:text-primary-900"
+                                                        >
+                                                            View Details
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                exportReportById(reportItem.id);
+                                                            }}
+                                                            className="text-green-600 hover:text-green-900 flex items-center"
+                                                        >
+                                                            <Download className="w-4 h-4 mr-1" />
+                                                            Export
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                deleteReport(reportItem.id);
+                                                            }}
+                                                            className="text-red-600 hover:text-red-900 flex items-center"
+                                                        >
+                                                            <Trash2 className="w-4 h-4 mr-1" />
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
+
 
         </div>
     );

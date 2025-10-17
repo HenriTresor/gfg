@@ -92,6 +92,9 @@ router.get('/payment-reports', asyncHandler(adminController.getAllReports.bind(a
 // GET /api/admin/payment-report/:id - Get a specific report by ID
 router.get('/payment-report/:id', validationChains.getById, asyncHandler(adminController.getReportById.bind(adminController)));
 
+// DELETE /api/admin/payment-report/:id - Delete a specific report
+router.delete('/payment-report/:id', validationChains.getById, asyncHandler(adminController.deleteReport.bind(adminController)));
+
 // GET /api/admin/statistics - Get system statistics
 router.get('/statistics', asyncHandler(adminController.getStatistics));
 
@@ -99,3 +102,4 @@ router.get('/statistics', asyncHandler(adminController.getStatistics));
 router.post('/supervisors', createSupervisorValidation, asyncHandler(adminController.createSupervisor));
 
 export default router;
+ 

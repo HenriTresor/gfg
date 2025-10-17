@@ -308,6 +308,30 @@ export class AdminController {
         }
     }
 
+    async deleteReport(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+
+            const report = await prisma.paymentReport.findUnique({
+                where: { id },
+            });
+
+            if (!report) {
+                ResponseHelper.notFound(res, 'Report not found');
+                return;
+            }
+
+            await prisma.paymentReport.delete({
+                where: { id },
+            });
+
+            ResponseHelper.success(res, null, 'Report deleted successfully');
+        } catch (error) {
+            logger.error('Error deleting report:', error);
+            ResponseHelper.internalServerError(res, 'Failed to delete report');
+        }
+    }
+
     private async generateReportData(filters: any): Promise<PaymentReportResponse> {
         const where: any = {};
 

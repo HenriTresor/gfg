@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = 'https://gfg-bo84.onrender.com/api';
+// const API_BASE_URL = 'http://localhost:8080/api'
 
 // Create axios instance
 const api = axios.create({
@@ -187,6 +188,8 @@ export const adminAPI = {
     getAllReports: () => api.get('/admin/payment-reports'),
 
     getReportById: (id: string) => api.get(`/admin/payment-report/${id}`),
+
+    deleteReport: (id: string) => api.delete(`/admin/payment-report/${id}`),
 
     getStatistics: () => api.get('/admin/statistics'),
 

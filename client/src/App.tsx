@@ -49,7 +49,7 @@ function App() {
                   element={<AdminDailyCasualRequests />}
                 />
                 <Route
-                  path="admin/reports"
+                  path="admin/reports/:reportId?"
                   element={
                     <ProtectedRoute requiredRole="SYSTEM_ADMIN">
                       <AdminReports />
