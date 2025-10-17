@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://6fc8f5c7977d.ngrok-free.app/api';
+const API_BASE_URL = 'https://gfg-bo84.onrender.com/api';
 
 // Create axios instance
 const api = axios.create({

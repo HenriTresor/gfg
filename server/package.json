@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "setup": "node setup.js",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
     "prisma:generate": "prisma generate",
@@ -16,7 +16,8 @@
     "db:seed": "ts-node prisma/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "echo \"No linter configured\"",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "nodejs",
