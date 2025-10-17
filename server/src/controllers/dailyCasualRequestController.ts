@@ -6,6 +6,8 @@ import logger from '../config/logger';
 import { emailService } from '../services/emailService';
 import { notificationService } from '../services/notificationService';
 import { NotificationType } from '@prisma/client';
+import { cacheService } from '../services/cacheService';
+import { CACHE_KEYS, CACHE_TTL } from '../services/cacheService';
 
 export class DailyCasualRequestController {
     // Supervisors can create requests
@@ -136,6 +138,9 @@ export class DailyCasualRequestController {
             } catch (notifError) {
                 logger.error('Error creating notifications for admins:', notifError);
             }
+
+            // Invalidate cache
+            cacheService.invalidateDailyRequests();
 
             logger.info(`Daily casual request created by ${req.user!.email}: ${casualsRequired} casuals for ${crop} - ${activity}`);
             ResponseHelper.created(res, request, 'Daily casual request created successfully');
@@ -389,6 +394,9 @@ export class DailyCasualRequestController {
                 logger.error('Error creating approval notification:', notifError);
             }
 
+            // Invalidate cache
+            cacheService.invalidateDailyRequests();
+
             logger.info(`Daily casual request approved by admin ${req.user!.email}: ${request.casualsRequired} casuals for ${request.crop} - ${request.activity}`);
             ResponseHelper.success(res, request, 'Daily casual request approved successfully');
         } catch (error) {
@@ -493,6 +501,9 @@ export class DailyCasualRequestController {
                 logger.error('Error creating rejection notification:', notifError);
             }
 
+            // Invalidate cache
+            cacheService.invalidateDailyRequests();
+
             logger.info(`Daily casual request rejected by admin ${req.user!.email}: ${request.casualsRequired} casuals for ${request.crop} - ${request.activity}. Reason: ${rejectionReason}`);
             ResponseHelper.success(res, request, 'Daily casual request rejected successfully');
         } catch (error) {
@@ -549,6 +560,9 @@ export class DailyCasualRequestController {
                 },
             });
 
+            // Invalidate cache
+            cacheService.invalidateDailyRequests();
+
             logger.info(`Daily casual request updated: ${request.casualsRequired} casuals for ${request.crop} - ${request.activity}`);
             ResponseHelper.success(res, request, 'Daily casual request updated successfully');
         } catch (error) {
@@ -587,6 +601,9 @@ export class DailyCasualRequestController {
             await prisma.dailyCasualRequest.delete({
                 where: { id },
             });
+
+            // Invalidate cache
+            cacheService.invalidateDailyRequests();
 
             logger.info(`Daily casual request deleted: ${existingRequest.casualsRequired} casuals for ${existingRequest.crop} - ${existingRequest.activity}`);
             ResponseHelper.success(res, null, 'Daily casual request deleted successfully');

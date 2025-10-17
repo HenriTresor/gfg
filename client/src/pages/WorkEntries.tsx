@@ -453,14 +453,14 @@ const WorkEntries: React.FC = () => {
                                     <div className="relative">
                                         <input
                                             type="text"
-                                            required
+                                        required
                                             value={casualSearchTerm}
                                             onChange={(e) => {
                                                 setCasualSearchTerm(e.target.value);
                                                 setSelectedCasual(null);
                                                 setFormData({ ...formData, casualId: '' });
                                             }}
-                                            className="input-field"
+                                        className="input-field"
                                             placeholder="Search by name, phone, or ID..."
                                         />
                                         {filteredCasuals.length > 0 && (
