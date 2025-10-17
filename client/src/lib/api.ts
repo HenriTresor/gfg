@@ -182,6 +182,12 @@ export const adminAPI = {
         status?: string;
     }) => api.post('/admin/payment-report', data),
 
+    getLatestReport: () => api.get('/admin/payment-report/latest'),
+
+    getAllReports: () => api.get('/admin/payment-reports'),
+
+    getReportById: (id: string) => api.get(`/admin/payment-report/${id}`),
+
     getStatistics: () => api.get('/admin/statistics'),
 
     createSupervisor: (supervisorData: {

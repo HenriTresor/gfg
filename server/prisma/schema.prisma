@@ -29,6 +29,7 @@ model User {
   dailyCasualRequests  DailyCasualRequest[]
   approvedDailyCasualRequests  DailyCasualRequest[] @relation("RequestApprovedBy")
   notifications Notification[]
+  generatedReports PaymentReport[]
 
   @@map("users")
 }
@@ -134,6 +135,18 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@map("notifications")
+}
+
+// Payment Report model
+model PaymentReport {
+  id        String   @id @default(cuid())
+  generatedBy String
+  generatedByUser User @relation(fields: [generatedBy], references: [id], onDelete: Cascade)
+  reportData String  // JSON string containing the full report
+  filters    String  // JSON string containing the filters used
+  createdAt  DateTime @default(now())
+
+  @@map("payment_reports")
 }
 
 // Enums

@@ -184,7 +184,18 @@ export class AdminController {
 
     async generateCustomPaymentReport(req: Request, res: Response): Promise<void> {
         try {
-            const reportData = await this.generateReportData(req.body as PaymentReportRequest);
+            const filters = req.body as PaymentReportRequest;
+            const reportData = await this.generateReportData(filters);
+
+            // Save report to database
+            await prisma.paymentReport.create({
+                data: {
+                    generatedBy: req.user!.id,
+                    reportData: JSON.stringify(reportData),
+                    filters: JSON.stringify(filters),
+                },
+            });
+
             ResponseHelper.success(res, reportData, 'Custom payment report generated successfully');
         } catch (error) {
             logger.error('Error generating custom payment report:', error);
@@ -192,16 +203,132 @@ export class AdminController {
         }
     }
 
+    async getLatestReport(req: Request, res: Response): Promise<void> {
+        try {
+            const latestReport = await prisma.paymentReport.findFirst({
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    generatedByUser: {
+                        select: {
+                            email: true,
+                            firstName: true,
+                            lastName: true,
+                        },
+                    },
+                },
+            });
+
+            if (!latestReport) {
+                ResponseHelper.success(res, null, 'No reports found');
+                return;
+            }
+
+            const reportData = {
+                ...JSON.parse(latestReport.reportData),
+                generatedAt: latestReport.createdAt,
+                generatedBy: latestReport.generatedByUser,
+                filters: JSON.parse(latestReport.filters),
+            };
+
+            ResponseHelper.success(res, reportData, 'Latest report retrieved successfully');
+        } catch (error) {
+            logger.error('Error getting latest report:', error);
+            ResponseHelper.internalServerError(res, 'Failed to retrieve latest report');
+        }
+    }
+
+    async getAllReports(req: Request, res: Response): Promise<void> {
+        try {
+            const reports = await prisma.paymentReport.findMany({
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    generatedByUser: {
+                        select: {
+                            email: true,
+                            firstName: true,
+                            lastName: true,
+                        },
+                    },
+                },
+            });
+
+            const formattedReports = reports.map((report: any) => {
+                const reportData = JSON.parse(report.reportData);
+                const filters = JSON.parse(report.filters);
+
+                return {
+                    id: report.id,
+                    generatedAt: report.createdAt,
+                    generatedBy: report.generatedByUser,
+                    filters: filters,
+                    summary: reportData.summary,
+                };
+            });
+
+            ResponseHelper.success(res, formattedReports, 'All reports retrieved successfully');
+        } catch (error) {
+            logger.error('Error getting all reports:', error);
+            ResponseHelper.internalServerError(res, 'Failed to retrieve reports');
+        }
+    }
+
+    async getReportById(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+
+            const report = await prisma.paymentReport.findUnique({
+                where: { id },
+                include: {
+                    generatedByUser: {
+                        select: {
+                            email: true,
+                            firstName: true,
+                            lastName: true,
+                        },
+                    },
+                },
+            });
+
+            if (!report) {
+                ResponseHelper.notFound(res, 'Report not found');
+                return;
+            }
+
+            const reportData = {
+                ...JSON.parse(report.reportData),
+                generatedAt: report.createdAt,
+                generatedBy: report.generatedByUser,
+                filters: JSON.parse(report.filters),
+            };
+
+            ResponseHelper.success(res, reportData, 'Report retrieved successfully');
+        } catch (error) {
+            logger.error('Error getting report by ID:', error);
+            ResponseHelper.internalServerError(res, 'Failed to retrieve report');
+        }
+    }
+
     private async generateReportData(filters: any): Promise<PaymentReportResponse> {
         const where: any = {};
 
+        // Require date filters
+        if (!filters.startDate || !filters.endDate) {
+            throw new Error('Start date and end date are required to generate the report');
+        }
+
         // Apply date filters
-        if (filters.startDate) {
-            where.date = { ...where.date, gte: new Date(filters.startDate) };
+        const startDate = new Date(filters.startDate);
+        const endDate = new Date(filters.endDate);
+
+        // Validate date range
+        if (endDate < startDate) {
+            throw new Error('End date must be after start date');
         }
-        if (filters.endDate) {
-            where.date = { ...where.date, lte: new Date(filters.endDate) };
-        }
+
+        where.date = {
+            gte: startDate,
+            lte: endDate,
+        };
 
         // Apply other filters
         if (filters.farmName) {

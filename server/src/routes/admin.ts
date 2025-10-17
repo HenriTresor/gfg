@@ -83,6 +83,15 @@ router.get('/payment-report', asyncHandler(adminController.generatePaymentReport
 // POST /api/admin/payment-report - Generate custom payment report
 router.post('/payment-report', paymentReportValidation, asyncHandler(adminController.generateCustomPaymentReport.bind(adminController)));
 
+// GET /api/admin/payment-report/latest - Get latest generated report
+router.get('/payment-report/latest', asyncHandler(adminController.getLatestReport.bind(adminController)));
+
+// GET /api/admin/payment-reports - Get all generated reports
+router.get('/payment-reports', asyncHandler(adminController.getAllReports.bind(adminController)));
+
+// GET /api/admin/payment-report/:id - Get a specific report by ID
+router.get('/payment-report/:id', validationChains.getById, asyncHandler(adminController.getReportById.bind(adminController)));
+
 // GET /api/admin/statistics - Get system statistics
 router.get('/statistics', asyncHandler(adminController.getStatistics));
 
