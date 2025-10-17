@@ -5,7 +5,7 @@ import { PaginationHelper } from '../utils/pagination';
 import logger from '../config/logger';
 import { emailService } from '../services/emailService';
 import { notificationService } from '../services/notificationService';
-import { NotificationType } from '../generated/prisma';
+import { NotificationType } from '@prisma/client';
 
 export class DailyCasualRequestController {
     // Supervisors can create requests
