@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Users,
     ClipboardList,
@@ -20,6 +21,7 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [stats, setStats] = useState<DashboardStats>({
         totalCasuals: 0,
         totalWorkEntries: 0,
@@ -156,29 +158,29 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
-                        <div className="card">
-                            <div className="flex items-center">
-                                <div className="p-3 bg-yellow-100 rounded-lg">
-                                    <CheckCircle className="w-6 h-6 text-yellow-600" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium text-secondary-600">Pending</p>
-                                    <p className="text-2xl font-bold text-secondary-600">{stats.pendingRequests}</p>
-                                </div>
-                            </div>
+                <div className="card">
+                    <div className="flex items-center">
+                        <div className="p-3 bg-yellow-100 rounded-lg">
+                            <CheckCircle className="w-6 h-6 text-yellow-600" />
                         </div>
+                        <div className="ml-4">
+                            <p className="text-sm font-medium text-secondary-600">Pending</p>
+                            <p className="text-2xl font-bold text-secondary-600">{stats.pendingRequests}</p>
+                        </div>
+                    </div>
+                </div>
 
-                        <div className="card">
-                            <div className="flex items-center">
-                                <div className="p-3 bg-green-100 rounded-lg">
-                                    <CheckCircle className="w-6 h-6 text-green-600" />
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium text-primary-600">Approved</p>
-                                    <p className="text-2xl font-bold text-primary-600">{stats.approvedRequests}</p>
-                                </div>
-                            </div>
+                <div className="card">
+                    <div className="flex items-center">
+                        <div className="p-3 bg-green-100 rounded-lg">
+                            <CheckCircle className="w-6 h-6 text-green-600" />
                         </div>
+                        <div className="ml-4">
+                            <p className="text-sm font-medium text-primary-600">Approved</p>
+                            <p className="text-2xl font-bold text-primary-600">{stats.approvedRequests}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Recent Daily Requests */}
@@ -187,7 +189,10 @@ const Dashboard: React.FC = () => {
                     <h2 className="text-lg font-semibold text-accent-600">
                         Recent Daily Requests
                     </h2>
-                    <button className="btn-primary text-sm">
+                    <button
+                        onClick={() => navigate(user?.role === 'SYSTEM_ADMIN' ? '/admin/daily-casual-requests' : '/daily-casual-requests')}
+                        className="btn-primary text-sm"
+                    >
                         View All
                     </button>
                 </div>

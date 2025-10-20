@@ -3,6 +3,37 @@ import { UserPlus, Mail, Lock, User } from 'lucide-react';
 import { adminAPI } from '../lib/api';
 import { useNotification } from '../components/ErrorNotification';
 
+// Helper function to extract error messages from different response formats
+const extractErrorMessage = (error: any): string => {
+    if (!error.response?.data) {
+        return error.message || 'An unexpected error occurred';
+    }
+
+    const data = error.response.data;
+
+    // Handle validation errors with details array
+    if (data.error === 'Validation failed' && data.details && Array.isArray(data.details)) {
+        return data.details.map((detail: any) => detail.message).join(', ');
+    }
+
+    // Handle single error message
+    if (data.error) {
+        return data.error;
+    }
+
+    // Handle array of error messages
+    if (Array.isArray(data.message)) {
+        return data.message.join(', ');
+    }
+
+    // Handle single message
+    if (data.message) {
+        return data.message;
+    }
+
+    return 'An unexpected error occurred';
+};
+
 const AdminSupervisors: React.FC = () => {
     const { showSuccess, showError } = useNotification();
     const [showModal, setShowModal] = useState(false);
@@ -29,7 +60,7 @@ const AdminSupervisors: React.FC = () => {
                 lastName: '',
             });
         } catch (error: any) {
-            const errorMessage = error.response?.data?.error || 'Failed to create supervisor';
+            const errorMessage = extractErrorMessage(error);
             showError(errorMessage);
         } finally {
             setLoading(false);
@@ -82,7 +113,7 @@ const AdminSupervisors: React.FC = () => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-[rgb(0,0,0,0.3)] flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
                         <h2 className="text-lg font-semibold mb-4 text-primary-600">Add New Supervisor</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">

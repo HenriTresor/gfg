@@ -36,7 +36,6 @@ interface PaymentReport {
     filters: {
         startDate?: string;
         endDate?: string;
-        farmName?: string;
     };
 }
 
@@ -51,7 +50,6 @@ const AdminReports: React.FC = () => {
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
-        farmName: '',
     });
 
     useEffect(() => {
@@ -249,7 +247,7 @@ const AdminReports: React.FC = () => {
                         className="btn-secondary flex items-center"
                     >
                         <Filter className="w-4 h-4 mr-2" />
-                        Filters
+                        Generate Report
                     </button>
                     {report && reportId !== 'all' && (
                         <button
@@ -290,18 +288,7 @@ const AdminReports: React.FC = () => {
                                     className="input-field"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Farm Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={filters.farmName}
-                                    onChange={(e) => setFilters({ ...filters, farmName: e.target.value })}
-                                    className="input-field"
-                                    placeholder="e.g., Farm A"
-                                />
-                            </div>
+                           
                         </div>
                         <div className="flex space-x-3">
                             <button type="submit" className="btn-primary">
@@ -353,12 +340,7 @@ const AdminReports: React.FC = () => {
                                         To: {new Date(report.filters.endDate).toLocaleDateString()}
                                     </span>
                                 )}
-                                {report.filters.farmName && (
-                                    <span className="flex items-center">
-                                        <FileText className="w-3 h-3 mr-1" />
-                                        Farm: {report.filters.farmName}
-                                    </span>
-                                )}
+                               
                             </div>
                         </div>
                         <div className="text-right">

@@ -1,6 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { dailyCasualRequestAPI } from '../lib/api';
+import { useNotification } from '../components/ErrorNotification';
+
+// Helper function to extract error messages from different response formats
+const extractErrorMessage = (error: any): string => {
+    if (!error.response?.data) {
+        return error.message || 'An unexpected error occurred';
+    }
+
+    const data = error.response.data;
+
+    // Handle validation errors with details array
+    if (data.error === 'Validation failed' && data.details && Array.isArray(data.details)) {
+        return data.details.map((detail: any) => detail.message).join(', ');
+    }
+
+    // Handle single error message
+    if (data.error) {
+        return data.error;
+    }
+
+    // Handle array of error messages
+    if (Array.isArray(data.message)) {
+        return data.message.join(', ');
+    }
+
+    // Handle single message
+    if (data.message) {
+        return data.message;
+    }
+
+    return 'An unexpected error occurred';
+};
 
 // Activity rates
 const ACTIVITY_RATES: { [key: string]: number } = {
@@ -93,8 +125,10 @@ interface DailyCasualRequest {
 }
 
 const DailyCasualRequests: React.FC = () => {
+    const { showError, showSuccess } = useNotification();
     const [requests, setRequests] = useState<DailyCasualRequest[]>([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingRequest, setEditingRequest] = useState<DailyCasualRequest | null>(null);
     const [formData, setFormData] = useState({
@@ -127,6 +161,7 @@ const DailyCasualRequests: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitting(true);
         try {
             const data = {
                 ...formData,
@@ -137,16 +172,22 @@ const DailyCasualRequests: React.FC = () => {
 
             if (editingRequest) {
                 await dailyCasualRequestAPI.update(editingRequest.id, data);
+                showSuccess('Daily casual request updated successfully!');
             } else {
                 await dailyCasualRequestAPI.create(data);
+                showSuccess('Daily casual request created successfully!');
             }
 
             setShowModal(false);
             setEditingRequest(null);
             resetForm();
             fetchRequests();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving request:', error);
+            const errorMessage = extractErrorMessage(error);
+            showError(errorMessage);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -392,7 +433,7 @@ const DailyCasualRequests: React.FC = () => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-[rgb(0,0,0,0.3)] flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <h2 className="text-lg font-semibold mb-4">
                             {editingRequest ? 'Edit Request' : 'New Daily Casual Request'}
@@ -533,8 +574,12 @@ const DailyCasualRequests: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex space-x-3 pt-4">
-                                <button type="submit" className="btn-primary flex-1">
-                                    {editingRequest ? 'Update' : 'Create'}
+                                <button
+                                    type="submit"
+                                    className="btn-primary flex-1"
+                                    disabled={submitting}
+                                >
+                                    {submitting ? 'Submitting...' : (editingRequest ? 'Update' : 'Create')}
                                 </button>
                                 <button
                                     type="button"

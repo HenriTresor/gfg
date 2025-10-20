@@ -1,6 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, MapPin, DollarSign } from 'lucide-react';
 import { dailyCasualRequestAPI } from '../lib/api';
+import { useNotification } from '../components/ErrorNotification';
+
+// Helper function to extract error messages from different response formats
+const extractErrorMessage = (error: any): string => {
+    if (!error.response?.data) {
+        return error.message || 'An unexpected error occurred';
+    }
+
+    const data = error.response.data;
+
+    // Handle validation errors with details array
+    if (data.error === 'Validation failed' && data.details && Array.isArray(data.details)) {
+        return data.details.map((detail: any) => detail.message).join(', ');
+    }
+
+    // Handle single error message
+    if (data.error) {
+        return data.error;
+    }
+
+    // Handle array of error messages
+    if (Array.isArray(data.message)) {
+        return data.message.join(', ');
+    }
+
+    // Handle single message
+    if (data.message) {
+        return data.message;
+    }
+
+    return 'An unexpected error occurred';
+};
 
 interface DailyCasualRequest {
     id: string;
@@ -33,6 +65,7 @@ interface DailyCasualRequest {
 }
 
 const AdminDailyCasualRequests: React.FC = () => {
+    const { showError, showSuccess } = useNotification();
     const [requests, setRequests] = useState<DailyCasualRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState<DailyCasualRequest | null>(null);
@@ -73,20 +106,24 @@ const AdminDailyCasualRequests: React.FC = () => {
             setProcessing(true);
             if (actionType === 'approve') {
                 await dailyCasualRequestAPI.approveRequest(selectedRequest.id);
+                showSuccess('Request approved successfully!');
             } else {
                 if (!rejectionReason.trim()) {
-                    alert('Please provide a reason for rejection');
+                    showError('Please provide a reason for rejection');
                     return;
                 }
                 await dailyCasualRequestAPI.rejectRequest(selectedRequest.id, { rejectionReason });
+                showSuccess('Request rejected successfully!');
             }
 
             setShowModal(false);
             setSelectedRequest(null);
             setRejectionReason('');
             fetchAllRequests();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error processing request:', error);
+            const errorMessage = extractErrorMessage(error);
+            showError(errorMessage);
         } finally {
             setProcessing(false);
         }
@@ -300,7 +337,7 @@ const AdminDailyCasualRequests: React.FC = () => {
 
             {/* Modal */}
             {showModal && selectedRequest && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-[rgb(0,0,0,0.3)] flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
                         <h2 className="text-lg font-semibold mb-4">
                             {actionType === 'approve' ? 'Approve Request' : 'Reject Request'}

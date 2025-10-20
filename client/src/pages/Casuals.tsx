@@ -2,6 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, User } from 'lucide-react';
 import { casualAPI } from '../lib/api';
 import { useAuth } from '../lib/authContext';
+import { useNotification } from '../components/ErrorNotification';
+
+// Helper function to extract error messages from different response formats
+const extractErrorMessage = (error: any): string => {
+    if (!error.response?.data) {
+        return error.message || 'An unexpected error occurred';
+    }
+
+    const data = error.response.data;
+
+    // Handle validation errors with details array
+    if (data.error === 'Validation failed' && data.details && Array.isArray(data.details)) {
+        return data.details.map((detail: any) => detail.message).join(', ');
+    }
+
+    // Handle single error message
+    if (data.error) {
+        return data.error;
+    }
+
+    // Handle array of error messages
+    if (Array.isArray(data.message)) {
+        return data.message.join(', ');
+    }
+
+    // Handle single message
+    if (data.message) {
+        return data.message;
+    }
+
+    return 'An unexpected error occurred';
+};
 
 interface Casual {
     id: string;
@@ -16,11 +48,14 @@ interface Casual {
 
 const Casuals: React.FC = () => {
     const { user } = useAuth();
+    const { showError, showSuccess } = useNotification();
     const [casuals, setCasuals] = useState<Casual[]>([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingCasual, setEditingCasual] = useState<Casual | null>(null);
+    const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         nationalId: '',
@@ -63,20 +98,43 @@ const Casuals: React.FC = () => {
         }
     };
 
+    const handleSearchChange = (value: string) => {
+        setSearchTerm(value);
+
+        // Clear existing timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        // Set new timeout for auto-search
+        const timeout = setTimeout(() => {
+            handleSearch();
+        }, 500); // 500ms delay
+
+        setSearchTimeout(timeout);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitting(true);
         try {
             if (editingCasual) {
                 await casualAPI.update(editingCasual.id, formData);
+                showSuccess('Casual worker updated successfully!');
             } else {
                 await casualAPI.create(formData);
+                showSuccess('Casual worker created successfully!');
             }
             setShowModal(false);
             setEditingCasual(null);
             setFormData({ name: '', nationalId: '', phoneNumber: '', farmName: 'Kamabuye' });
             fetchCasuals();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving casual:', error);
+            const errorMessage = extractErrorMessage(error);
+            showError(errorMessage);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -121,22 +179,15 @@ const Casuals: React.FC = () => {
 
             {/* Search */}
             <div className="card">
-                <div className="flex items-center space-x-4">
-                    <div className="flex-1">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <input
-                                type="text"
-                                placeholder="Search by name, national ID, or phone number..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="input-field pl-10"
-                            />
-                        </div>
-                    </div>
-                    <button onClick={handleSearch} className="btn-secondary">
-                        Search
-                    </button>
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                        type="text"
+                        placeholder="Search by name, national ID, or phone number..."
+                        value={searchTerm}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        className="input-field pl-10 w-full"
+                    />
                 </div>
             </div>
 
@@ -248,7 +299,7 @@ const Casuals: React.FC = () => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-[rgb(0,0,0,0.3)] flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
                         <h2 className="text-lg font-semibold mb-4">
                             {editingCasual ? 'Edit Casual' : 'Add New Casual'}
@@ -305,8 +356,12 @@ const Casuals: React.FC = () => {
                                 />
                             </div>
                             <div className="flex space-x-3 pt-4">
-                                <button type="submit" className="btn-primary flex-1">
-                                    {editingCasual ? 'Update' : 'Create'}
+                                <button
+                                    type="submit"
+                                    className="btn-primary flex-1"
+                                    disabled={submitting}
+                                >
+                                    {submitting ? 'Submitting...' : (editingCasual ? 'Update' : 'Create')}
                                 </button>
                                 <button
                                     type="button"

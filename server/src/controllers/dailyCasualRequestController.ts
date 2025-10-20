@@ -8,6 +8,7 @@ import { notificationService } from '../services/notificationService';
 import { NotificationType } from '@prisma/client';
 import { cacheService } from '../services/cacheService';
 import { CACHE_KEYS, CACHE_TTL } from '../services/cacheService';
+import { asyncExecute } from '../utils/asyncEmail';
 
 export class DailyCasualRequestController {
     // Supervisors can create requests
@@ -55,95 +56,99 @@ export class DailyCasualRequestController {
                 },
             });
 
-            // Send email to supervisor
-            try {
-                const supervisorName = request.supervisor.firstName
-                    ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
-                    : request.supervisor.email;
+            // Send response immediately (don't wait for emails)
+            logger.info(`Daily casual request created by ${req.user!.email}: ${casualsRequired} casuals for ${crop} - ${activity}`);
+            ResponseHelper.created(res, request, 'Daily casual request created successfully');
 
-                await emailService.sendRequestCreatedEmail(
-                    request.supervisor.email,
-                    supervisorName,
-                    {
-                        activity,
-                        crop,
-                        date,
-                        casualsRequired,
-                    }
-                );
-            } catch (emailError) {
-                logger.error('Error sending email notification:', emailError);
-            }
+            // Send emails and notifications asynchronously (don't block response)
+            asyncExecute(async () => {
+                // Send email to supervisor
+                try {
+                    const supervisorName = request.supervisor.firstName
+                        ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
+                        : request.supervisor.email;
 
-            // Create in-app notification for supervisor
-            try {
-                await notificationService.createNotification(
-                    supervisorId,
-                    NotificationType.REQUEST_CREATED,
-                    'Request Created',
-                    `Your request for ${casualsRequired} casuals for ${crop} - ${activity} has been created and is pending approval.`,
-                    `/daily-casual-requests`
-                );
-            } catch (notifError) {
-                logger.error('Error creating notification:', notifError);
-            }
-
-            // Send email to all admins
-            try {
-                const admins = await prisma.user.findMany({
-                    where: { role: 'SYSTEM_ADMIN' },
-                    select: { email: true, firstName: true, lastName: true },
-                });
-
-                const supervisorName = request.supervisor.firstName
-                    ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
-                    : request.supervisor.email;
-
-                for (const admin of admins) {
-                    await emailService.sendNewRequestNotificationEmail(
-                        admin.email,
+                    await emailService.sendRequestCreatedEmail(
+                        request.supervisor.email,
+                        supervisorName,
                         {
-                            supervisorName,
                             activity,
                             crop,
                             date,
                             casualsRequired,
                         }
                     );
+                } catch (emailError) {
+                    logger.error('Error sending email notification:', emailError);
                 }
-            } catch (emailError) {
-                logger.error('Error sending email to admins:', emailError);
-            }
 
-            // Create in-app notifications for all admins
-            try {
-                const admins = await prisma.user.findMany({
-                    where: { role: 'SYSTEM_ADMIN' },
-                    select: { id: true },
-                });
-
-                const supervisorName = request.supervisor.firstName
-                    ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
-                    : request.supervisor.email;
-
-                for (const admin of admins) {
+                // Create in-app notification for supervisor
+                try {
                     await notificationService.createNotification(
-                        admin.id,
+                        supervisorId,
                         NotificationType.REQUEST_CREATED,
-                        'New Request Pending',
-                        `${supervisorName} created a request for ${casualsRequired} casuals for ${crop} - ${activity}`,
-                        `/admin/daily-casual-requests`
+                        'Request Created',
+                        `Your request for ${casualsRequired} casuals for ${crop} - ${activity} has been created and is pending approval.`,
+                        `/daily-casual-requests`
                     );
+                } catch (notifError) {
+                    logger.error('Error creating notification:', notifError);
                 }
-            } catch (notifError) {
-                logger.error('Error creating notifications for admins:', notifError);
-            }
 
-            // Invalidate cache
-            cacheService.invalidateDailyRequests();
+                // Send email to all admins
+                try {
+                    const admins = await prisma.user.findMany({
+                        where: { role: 'SYSTEM_ADMIN' },
+                        select: { email: true, firstName: true, lastName: true },
+                    });
 
-            logger.info(`Daily casual request created by ${req.user!.email}: ${casualsRequired} casuals for ${crop} - ${activity}`);
-            ResponseHelper.created(res, request, 'Daily casual request created successfully');
+                    const supervisorName = request.supervisor.firstName
+                        ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
+                        : request.supervisor.email;
+
+                    for (const admin of admins) {
+                        await emailService.sendNewRequestNotificationEmail(
+                            admin.email,
+                            {
+                                supervisorName,
+                                activity,
+                                crop,
+                                date,
+                                casualsRequired,
+                            }
+                        );
+                    }
+                } catch (emailError) {
+                    logger.error('Error sending email to admins:', emailError);
+                }
+
+                // Create in-app notifications for all admins
+                try {
+                    const admins = await prisma.user.findMany({
+                        where: { role: 'SYSTEM_ADMIN' },
+                        select: { id: true },
+                    });
+
+                    const supervisorName = request.supervisor.firstName
+                        ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
+                        : request.supervisor.email;
+
+                    for (const admin of admins) {
+                        await notificationService.createNotification(
+                            admin.id,
+                            NotificationType.REQUEST_CREATED,
+                            'New Request Pending',
+                            `${supervisorName} created a request for ${casualsRequired} casuals for ${crop} - ${activity}`,
+                            `/admin/daily-casual-requests`
+                        );
+                    }
+                } catch (notifError) {
+                    logger.error('Error creating notifications for admins:', notifError);
+                }
+
+                // Invalidate cache
+                cacheService.invalidateDailyRequests();
+            });
         } catch (error) {
             logger.error('Error creating daily casual request:', error);
             ResponseHelper.internalServerError(res, 'Failed to create daily casual request');
@@ -361,44 +366,48 @@ export class DailyCasualRequestController {
                 },
             });
 
-            // Send email to supervisor
-            try {
-                const supervisorName = request.supervisor.firstName
-                    ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
-                    : request.supervisor.email;
-
-                await emailService.sendRequestApprovedEmail(
-                    request.supervisor.email,
-                    supervisorName,
-                    {
-                        activity: request.activity,
-                        crop: request.crop,
-                        date: request.date.toISOString(),
-                        casualsRequired: request.casualsRequired,
-                    }
-                );
-            } catch (emailError) {
-                logger.error('Error sending approval email:', emailError);
-            }
-
-            // Create in-app notification for supervisor
-            try {
-                await notificationService.createNotification(
-                    request.supervisor.id,
-                    NotificationType.REQUEST_APPROVED,
-                    'Request Approved',
-                    `Your request for ${request.casualsRequired} casuals for ${request.crop} - ${request.activity} has been approved.`,
-                    `/daily-casual-requests`
-                );
-            } catch (notifError) {
-                logger.error('Error creating approval notification:', notifError);
-            }
-
-            // Invalidate cache
-            cacheService.invalidateDailyRequests();
-
+            // Send response immediately (don't wait for emails)
             logger.info(`Daily casual request approved by admin ${req.user!.email}: ${request.casualsRequired} casuals for ${request.crop} - ${request.activity}`);
             ResponseHelper.success(res, request, 'Daily casual request approved successfully');
+
+            // Send emails and notifications asynchronously (don't block response)
+            asyncExecute(async () => {
+                // Send email to supervisor
+                try {
+                    const supervisorName = request.supervisor.firstName
+                        ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
+                        : request.supervisor.email;
+
+                    await emailService.sendRequestApprovedEmail(
+                        request.supervisor.email,
+                        supervisorName,
+                        {
+                            activity: request.activity,
+                            crop: request.crop,
+                            date: request.date.toISOString(),
+                            casualsRequired: request.casualsRequired,
+                        }
+                    );
+                } catch (emailError) {
+                    logger.error('Error sending approval email:', emailError);
+                }
+
+                // Create in-app notification for supervisor
+                try {
+                    await notificationService.createNotification(
+                        request.supervisor.id,
+                        NotificationType.REQUEST_APPROVED,
+                        'Request Approved',
+                        `Your request for ${request.casualsRequired} casuals for ${request.crop} - ${request.activity} has been approved.`,
+                        `/daily-casual-requests`
+                    );
+                } catch (notifError) {
+                    logger.error('Error creating approval notification:', notifError);
+                }
+
+                // Invalidate cache
+                cacheService.invalidateDailyRequests();
+            });
         } catch (error) {
             logger.error('Error approving daily casual request:', error);
             ResponseHelper.internalServerError(res, 'Failed to approve daily casual request');
@@ -467,45 +476,49 @@ export class DailyCasualRequestController {
                 },
             });
 
-            // Send email to supervisor
-            try {
-                const supervisorName = request.supervisor.firstName
-                    ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
-                    : request.supervisor.email;
-
-                await emailService.sendRequestRejectedEmail(
-                    request.supervisor.email,
-                    supervisorName,
-                    {
-                        activity: request.activity,
-                        crop: request.crop,
-                        date: request.date.toISOString(),
-                        casualsRequired: request.casualsRequired,
-                        rejectionReason: request.rejectionReason!,
-                    }
-                );
-            } catch (emailError) {
-                logger.error('Error sending rejection email:', emailError);
-            }
-
-            // Create in-app notification for supervisor
-            try {
-                await notificationService.createNotification(
-                    request.supervisor.id,
-                    NotificationType.REQUEST_REJECTED,
-                    'Request Rejected',
-                    `Your request for ${request.casualsRequired} casuals for ${request.crop} - ${request.activity} has been rejected. Reason: ${rejectionReason}`,
-                    `/daily-casual-requests`
-                );
-            } catch (notifError) {
-                logger.error('Error creating rejection notification:', notifError);
-            }
-
-            // Invalidate cache
-            cacheService.invalidateDailyRequests();
-
+            // Send response immediately (don't wait for emails)
             logger.info(`Daily casual request rejected by admin ${req.user!.email}: ${request.casualsRequired} casuals for ${request.crop} - ${request.activity}. Reason: ${rejectionReason}`);
             ResponseHelper.success(res, request, 'Daily casual request rejected successfully');
+
+            // Send emails and notifications asynchronously (don't block response)
+            asyncExecute(async () => {
+                // Send email to supervisor
+                try {
+                    const supervisorName = request.supervisor.firstName
+                        ? `${request.supervisor.firstName} ${request.supervisor.lastName || ''}`
+                        : request.supervisor.email;
+
+                    await emailService.sendRequestRejectedEmail(
+                        request.supervisor.email,
+                        supervisorName,
+                        {
+                            activity: request.activity,
+                            crop: request.crop,
+                            date: request.date.toISOString(),
+                            casualsRequired: request.casualsRequired,
+                            rejectionReason: request.rejectionReason!,
+                        }
+                    );
+                } catch (emailError) {
+                    logger.error('Error sending rejection email:', emailError);
+                }
+
+                // Create in-app notification for supervisor
+                try {
+                    await notificationService.createNotification(
+                        request.supervisor.id,
+                        NotificationType.REQUEST_REJECTED,
+                        'Request Rejected',
+                        `Your request for ${request.casualsRequired} casuals for ${request.crop} - ${request.activity} has been rejected. Reason: ${rejectionReason}`,
+                        `/daily-casual-requests`
+                    );
+                } catch (notifError) {
+                    logger.error('Error creating rejection notification:', notifError);
+                }
+
+                // Invalidate cache
+                cacheService.invalidateDailyRequests();
+            });
         } catch (error) {
             logger.error('Error rejecting daily casual request:', error);
             ResponseHelper.internalServerError(res, 'Failed to reject daily casual request');

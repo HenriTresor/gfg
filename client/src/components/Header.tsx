@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut } from 'lucide-react';
+import { User, Settings, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import NotificationBell from './NotificationBell';
+import { useSidebar } from '../contexts/SidebarContext';
 
 const Header: React.FC = () => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
     const { user, logout } = useAuth();
+    const { setIsOpen } = useSidebar();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -29,8 +31,15 @@ const Header: React.FC = () => {
     return (
         <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
-                {/* Left side - could add breadcrumbs here */}
-                <div>
+                {/* Left side - Hamburger menu and page title */}
+                <div className="flex items-center space-x-4">
+                    {/* Hamburger Menu - Mobile only */}
+                    <button
+                        onClick={() => setIsOpen(true)}
+                        className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                        <Menu className="w-6 h-6 text-gray-700" />
+                    </button>
                     <h2 className="text-xl font-semibold text-primary-600">
                         {getPageTitle(window.location.pathname)}
                     </h2>
