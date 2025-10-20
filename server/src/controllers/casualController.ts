@@ -12,15 +12,23 @@ export class CasualController {
         try {
             const pagination = PaginationHelper.parsePaginationParams(req.query);
             const search = req.query.search as string;
+            const userRole = req.user?.role;
 
-            // Create cache key based on pagination and search
-            const cacheKey = CACHE_KEYS.CASUAL_WORKERS(pagination.page, pagination.limit) + (search ? `:search:${search}` : '');
+            // Create cache key based on pagination, search, and role
+            const cacheKey = CACHE_KEYS.CASUAL_WORKERS(pagination.page, pagination.limit) +
+                (search ? `:search:${search}` : '') +
+                `:role:${userRole}`;
 
             // Use cache-aside pattern
             const result = await cacheService.getOrSet(
                 cacheKey,
                 async () => {
                     const where: any = {};
+
+                    // Only show active casuals for supervisors, all casuals for admins
+                    if (userRole !== 'SYSTEM_ADMIN') {
+                        where.isActive = true;
+                    }
 
                     if (search) {
                         where.OR = [
@@ -56,20 +64,28 @@ export class CasualController {
         try {
             const { search, page = 1, limit = 10 } = req.query;
             const pagination = PaginationHelper.parsePaginationParams(req.query);
+            const userRole = req.user?.role;
 
             if (!search || typeof search !== 'string') {
                 ResponseHelper.badRequest(res, 'Search parameter is required');
                 return;
             }
 
-            const where = {
+            const where: any = {
                 OR: [
                     { name: { contains: search, mode: 'insensitive' as any } },
                     { nationalId: { contains: search } },
                     { phoneNumber: { contains: search } },
                 ],
-                isActive: true,
             };
+
+            // Only show active casuals for supervisors, all casuals for admins
+            if (userRole !== 'SYSTEM_ADMIN') {
+                where.isActive = true;
+            }
+
+            console.log('Search query:', search);
+            console.log('Search where clause:', JSON.stringify(where, null, 2));
 
             const [casuals, total] = await Promise.all([
                 prisma.casual.findMany({
@@ -80,6 +96,9 @@ export class CasualController {
                 }),
                 prisma.casual.count({ where }),
             ]);
+
+            console.log('Found casuals:', casuals.length);
+            console.log('Casuals:', casuals.map(c => ({ name: c.name, nationalId: c.nationalId, phoneNumber: c.phoneNumber })));
 
             const result = PaginationHelper.createPaginationResult(casuals, total, pagination);
 
@@ -219,6 +238,37 @@ export class CasualController {
         }
     }
 
+    async toggleActiveStatus(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+            const { isActive } = req.body;
+
+            // Check if casual exists
+            const existingCasual = await prisma.casual.findUnique({
+                where: { id },
+            });
+
+            if (!existingCasual) {
+                ResponseHelper.notFound(res, 'Casual not found');
+                return;
+            }
+
+            const casual = await prisma.casual.update({
+                where: { id },
+                data: { isActive },
+            });
+
+            // Invalidate cache
+            cacheService.invalidateCasual();
+
+            logger.info(`Casual ${isActive ? 'activated' : 'deactivated'}: ${casual.name} (${casual.nationalId})`);
+            ResponseHelper.success(res, casual, `Casual ${isActive ? 'activated' : 'deactivated'} successfully`);
+        } catch (error) {
+            logger.error('Error toggling casual status:', error);
+            ResponseHelper.internalServerError(res, 'Failed to update casual status');
+        }
+    }
+
     async deleteCasual(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -233,17 +283,16 @@ export class CasualController {
                 return;
             }
 
-            // Soft delete by setting isActive to false
-            const casual = await prisma.casual.update({
+            // Permanent delete
+            await prisma.casual.delete({
                 where: { id },
-                data: { isActive: false },
             });
 
             // Invalidate cache
             cacheService.invalidateCasual();
 
-            logger.info(`Casual deactivated: ${casual.name} (${casual.nationalId})`);
-            ResponseHelper.success(res, casual, 'Casual deactivated successfully');
+            logger.info(`Casual permanently deleted: ${existingCasual.name} (${existingCasual.nationalId})`);
+            ResponseHelper.success(res, null, 'Casual deleted successfully');
         } catch (error) {
             logger.error('Error deleting casual:', error);
             ResponseHelper.internalServerError(res, 'Failed to delete casual');

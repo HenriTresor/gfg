@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// const API_BASE_URL = 'https://gfg-bo84.onrender.com/api';
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = 'https://gfg-bo84.onrender.com/api';
+// const API_BASE_URL = 'http://localhost:8080/api'
 
 // Create axios instance
 const api = axios.create({
@@ -100,6 +100,9 @@ export const casualAPI = {
 
     update: (id: string, casualData: any) =>
         api.put(`/casuals/${id}`, casualData),
+
+    toggleStatus: (id: string, isActive: boolean) =>
+        api.patch(`/casuals/${id}/toggle-status`, { isActive }),
 
     delete: (id: string) => api.delete(`/casuals/${id}`),
 

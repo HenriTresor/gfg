@@ -74,7 +74,10 @@ router.post('/', createCasualValidation, asyncHandler(casualController.createCas
 // PUT /api/casuals/:id - Update a casual (only admins)
 router.put('/:id', requireRole(['SYSTEM_ADMIN']), validationChains.getById, updateCasualValidation, asyncHandler(casualController.updateCasual));
 
-// DELETE /api/casuals/:id - Soft delete a casual (only admins)
+// PATCH /api/casuals/:id/toggle-status - Toggle active/inactive status (only admins)
+router.patch('/:id/toggle-status', requireRole(['SYSTEM_ADMIN']), validationChains.getById, asyncHandler(casualController.toggleActiveStatus));
+
+// DELETE /api/casuals/:id - Permanently delete a casual (only admins)
 router.delete('/:id', requireRole(['SYSTEM_ADMIN']), validationChains.getById, asyncHandler(casualController.deleteCasual));
 
 export default router;

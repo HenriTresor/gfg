@@ -360,7 +360,12 @@ export class AdminController {
         }
 
         const entries = await prisma.casualWorkEntry.findMany({
-            where,
+            where: {
+                ...where,
+                casual: {
+                    isActive: true, // Only include active casuals in reports
+                },
+            },
             include: {
                 casual: {
                     select: {

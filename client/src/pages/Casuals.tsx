@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, User } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, User, Power, PowerOff } from 'lucide-react';
 import { casualAPI } from '../lib/api';
 import { useAuth } from '../lib/authContext';
 import { useNotification } from '../components/ErrorNotification';
+import ConfirmationDialog from '../components/ConfirmationDialog';
 
 // Helper function to extract error messages from different response formats
 const extractErrorMessage = (error: any): string => {
@@ -56,6 +57,11 @@ const Casuals: React.FC = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingCasual, setEditingCasual] = useState<Casual | null>(null);
     const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+    // Confirmation dialog states
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showToggleDialog, setShowToggleDialog] = useState(false);
+    const [selectedCasual, setSelectedCasual] = useState<Casual | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         nationalId: '',
@@ -89,8 +95,13 @@ const Casuals: React.FC = () => {
 
         try {
             setLoading(true);
+            console.log('Searching for:', searchTerm);
             const response = await casualAPI.search(searchTerm);
-            setCasuals(response.data.data.data || []);
+            console.log('Search response:', response.data);
+            const casuals = response.data.data.data || [];
+            console.log('Found casuals:', casuals.length);
+            console.log('Casual names:', casuals.map(c => c.name));
+            setCasuals(casuals);
         } catch (error) {
             console.error('Error searching casuals:', error);
         } finally {
@@ -149,14 +160,41 @@ const Casuals: React.FC = () => {
         setShowModal(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this casual?')) {
-            try {
-                await casualAPI.delete(id);
-                fetchCasuals();
-            } catch (error) {
-                console.error('Error deleting casual:', error);
-            }
+    const handleDelete = (casual: Casual) => {
+        setSelectedCasual(casual);
+        setShowDeleteDialog(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!selectedCasual) return;
+
+        try {
+            await casualAPI.delete(selectedCasual.id);
+            showSuccess('Casual worker deleted permanently!');
+            fetchCasuals();
+        } catch (error: any) {
+            console.error('Error deleting casual:', error);
+            const errorMessage = extractErrorMessage(error);
+            showError(errorMessage);
+        }
+    };
+
+    const handleToggleStatus = (casual: Casual) => {
+        setSelectedCasual(casual);
+        setShowToggleDialog(true);
+    };
+
+    const confirmToggleStatus = async () => {
+        if (!selectedCasual) return;
+
+        try {
+            await casualAPI.toggleStatus(selectedCasual.id, !selectedCasual.isActive);
+            showSuccess(`Casual worker ${!selectedCasual.isActive ? 'activated' : 'deactivated'} successfully!`);
+            fetchCasuals();
+        } catch (error: any) {
+            console.error('Error toggling casual status:', error);
+            const errorMessage = extractErrorMessage(error);
+            showError(errorMessage);
         }
     };
 
@@ -274,14 +312,23 @@ const Casuals: React.FC = () => {
                                                 {isAdmin && (
                                                     <>
                                                         <button
+                                                            onClick={() => handleToggleStatus(casual)}
+                                                            className={`${casual.isActive ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}
+                                                            title={casual.isActive ? 'Deactivate' : 'Activate'}
+                                                        >
+                                                            {casual.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleEdit(casual)}
                                                             className="text-accent-600 hover:text-accent-900"
+                                                            title="Edit"
                                                         >
                                                             <Edit className="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDelete(casual.id)}
+                                                            onClick={() => handleDelete(casual)}
                                                             className="text-red-600 hover:text-red-900"
+                                                            title="Delete Permanently"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
@@ -375,6 +422,30 @@ const Casuals: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={showDeleteDialog}
+                onClose={() => setShowDeleteDialog(false)}
+                onConfirm={confirmDelete}
+                title="Delete Casual Worker"
+                message={`Are you sure you want to permanently delete ${selectedCasual?.name}? This action cannot be undone.`}
+                confirmText="Delete Permanently"
+                cancelText="Cancel"
+                type="danger"
+            />
+
+            {/* Toggle Status Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={showToggleDialog}
+                onClose={() => setShowToggleDialog(false)}
+                onConfirm={confirmToggleStatus}
+                title={selectedCasual?.isActive ? 'Deactivate Casual Worker' : 'Activate Casual Worker'}
+                message={`Are you sure you want to ${selectedCasual?.isActive ? 'deactivate' : 'activate'} ${selectedCasual?.name}?`}
+                confirmText={selectedCasual?.isActive ? 'Deactivate' : 'Activate'}
+                cancelText="Cancel"
+                type="warning"
+            />
         </div>
     );
 };
