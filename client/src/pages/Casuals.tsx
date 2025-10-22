@@ -100,7 +100,7 @@ const Casuals: React.FC = () => {
             console.log('Search response:', response.data);
             const casuals = response.data.data.data || [];
             console.log('Found casuals:', casuals.length);
-            console.log('Casual names:', casuals.map(c => c.name));
+            console.log('Casual names:', casuals.map((c: any) => c.name));
             setCasuals(casuals);
         } catch (error) {
             console.error('Error searching casuals:', error);
