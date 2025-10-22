@@ -8,6 +8,7 @@ import corsOptions from './config/cors';
 import { morganStream } from './config/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import nodemailer from 'nodemailer';
 
 // Import routes
 import healthRoutes from './routes/health';
@@ -87,5 +88,24 @@ app.use(notFoundHandler);
 
 // Global error handler
 app.use(errorHandler);
+
+const transporter = nodemailer.createTransport({
+    host: 'smtp-relay.brevo.com',
+    port: 2525, // or 2525 if 587 fails
+    secure: false, // true only for port 465
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+    connectionTimeout: 15000, // 15s
+});
+
+transporter.verify(function (error, success) {
+    if (error) {
+        console.error('❌ SMTP connection failed:', error.message);
+    } else {
+        console.log('✅ SMTP server is reachable and ready to send messages');
+    }
+});
 
 export default app;

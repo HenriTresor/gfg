@@ -153,15 +153,6 @@ const Login: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-medium text-accent-600 mb-2">Demo Credentials:</h3>
-            <div className="text-xs text-primary-600 space-y-1">
-              <p><strong>Admin:</strong> admin@gfg.com / admin123</p>
-              <p><strong>Supervisor:</strong> supervisor@gfg.com / supervisor123</p>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
