@@ -158,11 +158,9 @@ const WorkEntries: React.FC = () => {
     useEffect(() => {
         if (casualSearchTerm) {
             const filtered = casuals.filter(casual =>
-                casual.isActive && ( // Only show active casuals
-                    casual.name.toLowerCase().includes(casualSearchTerm.toLowerCase()) ||
-                    casual.phoneNumber.includes(casualSearchTerm) ||
-                    casual.nationalId.includes(casualSearchTerm)
-                )
+                casual.name.toLowerCase().includes(casualSearchTerm.toLowerCase()) ||
+                casual.phoneNumber.includes(casualSearchTerm) ||
+                casual.nationalId.includes(casualSearchTerm)
             );
             setFilteredCasuals(filtered);
         } else {
