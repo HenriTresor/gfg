@@ -35,7 +35,7 @@ function App() {
                 <Route
                   path="cost-report"
                   element={
-                    <ProtectedRoute requiredRole="SYSTEM_ADMIN">
+                    <ProtectedRoute requiredRoles={['FARM_SUPERVISOR', 'SYSTEM_ADMIN']}>
                       <WorkEntries />
                     </ProtectedRoute>
                   }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Calendar, MapPin, DollarSign } from 'lucide-react';
 import { workEntryAPI, casualAPI } from '../lib/api';
 import { useNotification } from '../components/ErrorNotification';
+import { useAuth } from '../lib/authContext';
 
 // Activity rates
 const ACTIVITY_RATES: { [key: string]: number } = {
@@ -126,6 +127,7 @@ const extractErrorMessage = (error: any): string => {
 
 const WorkEntries: React.FC = () => {
     const { showError, showSuccess } = useNotification();
+    const { user } = useAuth();
     const [workEntries, setWorkEntries] = useState<WorkEntry[]>([]);
     const [casuals, setCasuals] = useState<Casual[]>([]);
     const [loading, setLoading] = useState(true);
@@ -472,12 +474,14 @@ const WorkEntries: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button
-                                                    onClick={() => handleEdit(entry)}
-                                                    className="text-accent-600 hover:text-accent-900"
-                                                >
-                                                    Edit
-                                                </button>
+                                                {user?.role === 'SYSTEM_ADMIN' && (
+                                                    <button
+                                                        onClick={() => handleEdit(entry)}
+                                                        className="text-accent-600 hover:text-accent-900"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))

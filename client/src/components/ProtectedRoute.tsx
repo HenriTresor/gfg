@@ -5,11 +5,13 @@ import { useAuth } from '../lib/authContext';
 interface ProtectedRouteProps {
     children: React.ReactNode;
     requiredRole?: 'FARM_SUPERVISOR' | 'SYSTEM_ADMIN';
+    requiredRoles?: ('FARM_SUPERVISOR' | 'SYSTEM_ADMIN')[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     children,
-    requiredRole
+    requiredRole,
+    requiredRoles
 }) => {
     const { isAuthenticated, user, loading } = useAuth();
     const location = useLocation();
@@ -26,7 +28,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    // Check single role or multiple roles
     if (requiredRole && user?.role !== requiredRole) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    if (requiredRoles && !requiredRoles.includes(user?.role as any)) {
         return <Navigate to="/dashboard" replace />;
     }
 

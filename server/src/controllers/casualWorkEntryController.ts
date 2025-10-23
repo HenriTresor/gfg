@@ -262,12 +262,14 @@ export class CasualWorkEntryController {
             const userId = req.user!.id;
             const userRole = req.user!.role;
 
-            // Check if entry exists and user has permission to update
-            const where: any = { id };
-
-            if (userRole === 'FARM_SUPERVISOR') {
-                where.supervisorId = userId;
+            // Only admins can update work entries
+            if (userRole !== 'SYSTEM_ADMIN') {
+                ResponseHelper.forbidden(res, 'Only system administrators can update work entries');
+                return;
             }
+
+            // Check if entry exists
+            const where: any = { id };
 
             const existingEntry = await prisma.casualWorkEntry.findFirst({
                 where,
@@ -333,12 +335,14 @@ export class CasualWorkEntryController {
             const userId = req.user!.id;
             const userRole = req.user!.role;
 
-            // Check if entry exists and user has permission to delete
-            const where: any = { id };
-
-            if (userRole === 'FARM_SUPERVISOR') {
-                where.supervisorId = userId;
+            // Only admins can delete work entries
+            if (userRole !== 'SYSTEM_ADMIN') {
+                ResponseHelper.forbidden(res, 'Only system administrators can delete work entries');
+                return;
             }
+
+            // Check if entry exists
+            const where: any = { id };
 
             const existingEntry = await prisma.casualWorkEntry.findFirst({
                 where,

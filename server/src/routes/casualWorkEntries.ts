@@ -121,11 +121,11 @@ router.get('/:id', validationChains.getById, asyncHandler(casualWorkEntryControl
 // POST /api/casual-work-entries - Create a new casual work entry
 router.post('/', createCasualWorkEntryValidation, asyncHandler(casualWorkEntryController.createCasualWorkEntry));
 
-// PUT /api/casual-work-entries/:id - Update a casual work entry (only if PENDING)
-router.put('/:id', validationChains.getById, updateCasualWorkEntryValidation, asyncHandler(casualWorkEntryController.updateCasualWorkEntry));
+// PUT /api/casual-work-entries/:id - Update a casual work entry (only admins)
+router.put('/:id', requireRole(['SYSTEM_ADMIN']), validationChains.getById, updateCasualWorkEntryValidation, asyncHandler(casualWorkEntryController.updateCasualWorkEntry));
 
-// DELETE /api/casual-work-entries/:id - Delete a casual work entry (only if PENDING)
-router.delete('/:id', validationChains.getById, asyncHandler(casualWorkEntryController.deleteCasualWorkEntry));
+// DELETE /api/casual-work-entries/:id - Delete a casual work entry (only admins)
+router.delete('/:id', requireRole(['SYSTEM_ADMIN']), validationChains.getById, asyncHandler(casualWorkEntryController.deleteCasualWorkEntry));
 
 export default router;
 

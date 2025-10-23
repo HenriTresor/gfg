@@ -64,7 +64,7 @@ const Sidebar: React.FC = () => {
             name: 'Cost Report',
             href: '/cost-report',
             icon: ClipboardList,
-            roles: ['SYSTEM_ADMIN']
+            roles: ['FARM_SUPERVISOR', 'SYSTEM_ADMIN']
         },
         {
             name: 'Payment Reports',
